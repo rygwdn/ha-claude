@@ -15,9 +15,45 @@ ha-ws dashboards get <url_path> > /tmp/dashboard.json
 
 # Save modified config
 ha-ws dashboards save <url_path> /tmp/dashboard.json
+
+# Visually verify the result
+ha-browse screenshot /lovelace/<url_path>
+# Then read the output file to view the screenshot
 ```
 
 **Important**: Always use `ha-ws dashboards save` to modify dashboards. Do NOT edit `.storage/lovelace*` files directly.
+
+## Browser Verification
+
+Use `ha-browse` to visually inspect dashboards and other HA pages:
+
+```bash
+# Screenshot a dashboard
+ha-browse screenshot /lovelace/overview
+
+# Full-page screenshot (scrolls to capture everything)
+ha-browse screenshot /lovelace/overview --full-page
+
+# Screenshot at mobile width
+ha-browse screenshot /lovelace/overview --width 375 --height 812
+
+# Dark theme
+ha-browse screenshot /lovelace/overview --dark
+
+# Inspect the DOM / accessibility tree (useful for finding selectors)
+ha-browse dom /lovelace/overview
+
+# Screenshot just a specific card
+ha-browse screenshot /lovelace/overview --selector "hui-entities-card"
+
+# Other useful pages
+ha-browse screenshot /config/automations     # Automations list
+ha-browse screenshot /config/entities         # Entity registry
+ha-browse screenshot /developer-tools         # Developer tools
+ha-browse screenshot /map                     # Map view
+```
+
+The screenshot command outputs a file path (e.g., `/tmp/ha-screenshot-1234.png`). Use the Read tool to view the image.
 
 ## Dashboard Structure
 

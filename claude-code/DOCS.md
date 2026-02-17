@@ -51,6 +51,19 @@ ha-ws automations list           — List automations
 ha-ws automations toggle <id>    — Enable/disable
 ```
 
+### ha-browse (Browser)
+```
+ha-browse screenshot [path]       — Screenshot an HA page
+ha-browse screenshot --full-page  — Full scrollable screenshot
+ha-browse screenshot --dark       — Screenshot in dark theme
+ha-browse dom [path]              — Get accessibility tree
+ha-browse pdf [path]              — Save page as PDF
+ha-browse click <sel> [path]      — Click an element
+ha-browse eval <js> [path]        — Run JavaScript on page
+```
+
+Common paths: `/lovelace/0`, `/lovelace/overview`, `/config/automations`, `/config/entities`, `/developer-tools`, `/map`
+
 ### ha-backup & ha-check
 ```
 ha-backup create [name]          — Create a backup

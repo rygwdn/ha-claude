@@ -18,7 +18,7 @@ RUN npm run build && npm prune --production
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Install system dependencies
+# Install system dependencies (including Chromium for ha-browse)
 RUN apk add --no-cache \
     nodejs \
     npm \
@@ -28,7 +28,16 @@ RUN apk add --no-cache \
     g++ \
     bash \
     curl \
-    openssh-client
+    openssh-client \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ttf-freefont \
+    font-noto-emoji
+
+# Tell Playwright to use system Chromium
+ENV CHROMIUM_PATH=/usr/bin/chromium-browser
 
 # Install Claude Code CLI globally
 RUN npm install -g @anthropic-ai/claude-code
@@ -59,6 +68,7 @@ RUN chmod a+x /usr/local/bin/ha-api \
     && chmod a+x /usr/local/bin/ha-ws \
     && chmod a+x /usr/local/bin/ha-backup \
     && chmod a+x /usr/local/bin/ha-check \
+    && chmod a+x /usr/local/bin/ha-browse \
     && chmod a+x /etc/services.d/claudecodeui/run \
     && chmod a+x /etc/services.d/claudecodeui/finish \
     && chmod a+x /etc/services.d/proxy/run \
