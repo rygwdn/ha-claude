@@ -14,24 +14,15 @@ This add-on gives you a powerful AI coding assistant that deeply understands you
    - "Fix the errors in my automations"
    - "Add a motion-activated light automation for the hallway"
 
-## Web UI Layout
+## Web UI
 
-The interface has three panels:
+The add-on uses [claudecodeui](https://github.com/siteboon/claudecodeui), a rich web interface for Claude Code that provides:
 
-- **Left sidebar** — File browser showing your HA config directory, plus git history
-- **Center** — Terminal running Claude Code with full interactive capabilities
-- **Right panel** — Tabbed HA context: entities, automations, dashboards, logs
-
-Click items in the sidebar or context panels to reference them in your Claude conversation.
-
-## Quick Actions
-
-The header bar has quick action buttons:
-- **Check Config** — Validates your HA configuration
-- **Backup** — Creates a backup before making changes
-- **Restart HA** — Validates config first, then restarts
-- **New Dashboard** — Starts a dashboard creation workflow
-- **Fix Issues** — Analyzes logs and fixes problems
+- **Chat interface** — Structured conversation with Claude, including rendered tool outputs
+- **File browser** — Navigate and open files in your HA config directory
+- **Code editor** — CodeMirror-based editor with syntax highlighting
+- **Git panel** — View git history and diffs for your configuration changes
+- **Session management** — Create and switch between named sessions
 
 ## CLI Tools
 

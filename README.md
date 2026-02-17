@@ -6,16 +6,12 @@ A Home Assistant add-on that provides a powerful web UI for interacting with Cla
 
 ## Features
 
-- **Web Terminal** — Full xterm.js terminal running Claude Code with HA context
+- **Rich Web UI** — Powered by [claudecodeui](https://github.com/siteboon/claudecodeui), with chat interface, file browser, code editor, and structured tool output rendering
 - **HA CLI Tools** — `ha-api`, `ha-ws`, `ha-backup`, `ha-check` for direct HA API access
 - **Claude Code Skills** — Domain knowledge for YAML, dashboards, entities, diagnostics
-- **File Browser** — Navigate your HA configuration files
-- **Entity Browser** — Search and browse all HA entities with live states
-- **Automation List** — View all automations with enabled/disabled status
-- **Dashboard Preview** — Live preview of Lovelace dashboards
-- **Log Viewer** — HA core logs with error highlighting
+- **HA API Proxy** — Frontend can access HA entity states, services, config, and logs
 - **Session Management** — Multiple persistent Claude Code sessions
-- **Quick Actions** — One-click config check, backup, restart, and more
+- **Git Integration** — Built-in git panel for tracking configuration changes
 
 ## Add-ons
 
@@ -47,10 +43,10 @@ _AI coding assistant with deep Home Assistant integration._
 
 ## Architecture
 
-The add-on runs inside a Docker container with:
-- **Node.js backend** — Express + WebSocket server managing terminal sessions via node-pty
-- **React frontend** — 3-panel layout: file browser, terminal, HA context panels
-- **CLI tools** — Shell commands wrapping HA REST and WebSocket APIs
+The add-on runs inside a Docker container with two services:
+- **claudecodeui** — Rich web UI ([`@siteboon/claude-code-ui`](https://github.com/siteboon/claudecodeui)) providing chat interface, file browser, code editor, and structured output rendering via the Claude Agent SDK
+- **Proxy server** — Thin Node.js proxy that routes HA Ingress traffic to claudecodeui and adds HA API proxy endpoints (`/api/ha/*`)
+- **CLI tools** — Shell commands wrapping HA REST and WebSocket APIs, invoked by Claude via its Bash tool
 - **Skills** — Claude Code skills providing HA domain knowledge on-demand
 
 Access is through HA Ingress (no exposed ports), with full HA authentication.

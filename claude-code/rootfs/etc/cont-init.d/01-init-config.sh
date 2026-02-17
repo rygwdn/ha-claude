@@ -13,17 +13,6 @@ AUTO_BACKUP=$(bashio::config 'auto_backup')
 INGRESS_PORT=$(bashio::addon.ingress_port)
 bashio::log.info "Ingress port: ${INGRESS_PORT}"
 
-# Write server config
-cat > /data/server-config.json <<EOF
-{
-  "ingressPort": ${INGRESS_PORT},
-  "anthropicApiKey": "${ANTHROPIC_API_KEY}",
-  "model": "${MODEL}",
-  "permissionMode": "${PERMISSION_MODE}",
-  "autoBackup": ${AUTO_BACKUP}
-}
-EOF
-
 # Copy CLAUDE.md to homeassistant config dir (if not already present)
 if [ ! -f /homeassistant/CLAUDE.md ]; then
     cp /usr/share/claude-code/CLAUDE.md.tmpl /homeassistant/CLAUDE.md
@@ -39,7 +28,6 @@ if [ ! -d /homeassistant/.claude/skills ]; then
     bashio::log.info "Installed Claude Code skills to /homeassistant/.claude/skills/"
 else
     bashio::log.info "Skills directory already exists, checking for updates..."
-    # Update skills if source is newer
     for skill_dir in /usr/share/claude-code/skills/*/; do
         skill_name=$(basename "$skill_dir")
         if [ ! -d "/homeassistant/.claude/skills/${skill_name}" ]; then
@@ -50,8 +38,7 @@ else
 fi
 
 # Create data directories
-mkdir -p /data/sessions
-mkdir -p /root/.claude
+mkdir -p /data/sessions /data/claudecodeui /root/.claude
 
 # Initialize git in homeassistant config if not present
 if [ ! -d /homeassistant/.git ]; then
@@ -62,5 +49,9 @@ if [ ! -d /homeassistant/.git ]; then
     git commit -m "Initial commit (Claude Code add-on)" 2>/dev/null || true
     bashio::log.info "Git repository initialized"
 fi
+
+# Configure claudecodeui environment
+# claudecodeui reads ANTHROPIC_API_KEY from env and operates on the cwd
+# We set the working directory to /homeassistant in its S6 run script
 
 bashio::log.info "Claude Code add-on initialized successfully"
