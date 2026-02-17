@@ -1,0 +1,2 @@
+#!/bin/sh
+exec node /opt/cli-tools/dist/ha-backup.js "$@"

@@ -1,0 +1,16 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+
+bashio::log.info "Starting Claude Code web server..."
+
+# Read ingress port
+INGRESS_PORT=$(bashio::addon.ingress_port)
+
+# Export environment variables
+export INGRESS_PORT
+export SUPERVISOR_TOKEN="${SUPERVISOR_TOKEN}"
+export ANTHROPIC_API_KEY=$(bashio::config 'anthropic_api_key')
+export NODE_ENV=production
+
+# Start the Node.js server
+exec node /opt/server/dist/index.js

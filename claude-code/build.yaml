@@ -1,0 +1,10 @@
+build_from:
+  aarch64: "ghcr.io/home-assistant/aarch64-base:3.21"
+  amd64: "ghcr.io/home-assistant/amd64-base:3.21"
+labels:
+  org.opencontainers.image.title: "Home Assistant Add-on: Claude Code"
+  org.opencontainers.image.description: "AI coding assistant with deep Home Assistant integration"
+  org.opencontainers.image.source: "https://github.com/rygwdn/ha-claude"
+  org.opencontainers.image.licenses: "Apache License 2.0"
+args:
+  TEMPIO_VERSION: "2024.11.0"
