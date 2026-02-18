@@ -16,7 +16,6 @@ ingress_port: 0
 ingress_stream: true
 panel_icon: "mdi:robot"
 panel_title: "Claude Code"
-panel_admin: true
 
 # API access
 hassio_api: true
@@ -33,7 +32,7 @@ map:
   - backup:ro
 
 # Admin role for full API access
-role: admin
+hassio_role: admin
 privileged:
   - SYS_PTRACE
 
