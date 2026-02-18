@@ -12,7 +12,6 @@ init: false
 
 # Ingress (primary access — no exposed ports)
 ingress: true
-ingress_port: 0
 ingress_stream: true
 panel_icon: "mdi:robot"
 panel_title: "Claude Code"
