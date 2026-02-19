@@ -22,6 +22,7 @@ RUN npm run build && npm prune --production
 FROM $BUILD_FROM
 
 # Install system dependencies (including Chromium for ha-browse)
+# linux-headers is required by node-pty (used by claudecodeui) to compile native modules
 RUN apk add --no-cache \
     nodejs \
     npm \
@@ -29,6 +30,7 @@ RUN apk add --no-cache \
     python3 \
     make \
     g++ \
+    linux-headers \
     bash \
     curl \
     openssh-client \
