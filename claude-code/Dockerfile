@@ -1,7 +1,7 @@
 # Stage 1: Build CLI tools
 FROM node:22-alpine AS cli-builder
 WORKDIR /build/cli-tools
-COPY cli-tools/package.json cli-tools/tsconfig.json ./
+COPY cli-tools/package.json cli-tools/package-lock.json cli-tools/tsconfig.json ./
 RUN npm ci
 COPY cli-tools/src ./src
 RUN npm run build
@@ -9,7 +9,7 @@ RUN npm run build
 # Stage 2: Build proxy server
 FROM node:22-alpine AS server-builder
 WORKDIR /build/server
-COPY server/package.json server/tsconfig.json ./
+COPY server/package.json server/package-lock.json server/tsconfig.json ./
 RUN npm ci
 COPY server/src ./src
 RUN npm run build && npm prune --production
