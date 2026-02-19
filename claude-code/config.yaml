@@ -1,0 +1,49 @@
+# https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
+name: Claude Code
+version: "0.1.0"
+slug: claude_code
+description: "AI coding assistant with deep Home Assistant integration"
+url: "https://github.com/rygwdn/ha-claude/tree/main/claude-code"
+arch:
+  - aarch64
+  - amd64
+startup: services
+init: false
+
+# Ingress (primary access — no exposed ports)
+ingress: true
+ingress_stream: true
+panel_icon: "mdi:robot"
+panel_title: "Claude Code"
+
+# API access
+hassio_api: true
+homeassistant_api: true
+auth_api: true
+
+# File system access
+map:
+  - homeassistant_config:rw
+  - addon_config:rw
+  - share:rw
+  - ssl:ro
+  - media:ro
+  - backup:ro
+
+# Admin role for full API access
+hassio_role: admin
+privileged:
+  - SYS_PTRACE
+
+options:
+  anthropic_api_key: ""
+  model: "sonnet"
+  permission_mode: "default"
+  auto_backup: true
+schema:
+  anthropic_api_key: "password"
+  model: "list(sonnet|opus|haiku)"
+  permission_mode: "list(default|plan|bypassPermissions)"
+  auto_backup: "bool"
+
+# image: "ghcr.io/rygwdn/{arch}-addon-claude-code"

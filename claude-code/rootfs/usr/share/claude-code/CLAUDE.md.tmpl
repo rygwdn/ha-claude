@@ -1,0 +1,36 @@
+# Home Assistant Configuration
+
+Working directory: /homeassistant (HA config directory)
+
+## CLI Tools
+- `ha-api` — HA REST API (states, services, config, logs, history)
+- `ha-ws` — HA WebSocket (dashboards, entity/device registry, automations)
+- `ha-browse` — Browser tool (screenshots, DOM inspection, interaction with HA UI)
+- `ha-backup` — Create backups before changes
+- `ha-check` — Validate configuration
+
+Run any tool with `--help` for usage details.
+
+## Skills
+Use /ha-yaml, /ha-api, /ha-dashboard, /ha-diagnose, /ha-entities for domain knowledge.
+
+## Rules
+1. Always run `ha-check` before suggesting an HA restart
+2. Always run `ha-backup create` before major changes
+3. NEVER read or modify secrets.yaml
+4. Prefer editing YAML files directly (Claude has Read/Edit/Write tools)
+5. Use `ha-ws dashboards save` for Lovelace changes (not direct file edits)
+6. Use `ha-ws automations` for UI-managed automations (not file edits)
+7. After modifying YAML config files, run `ha-check` to validate
+8. Use `ha-browse screenshot` to visually verify dashboard changes
+9. `ha-browse screenshot` outputs a file path — read it with the Read tool to view
+
+## File Structure
+- `configuration.yaml` — Main configuration (includes other files)
+- `automations.yaml` — File-based automation definitions
+- `scripts.yaml` — Script definitions
+- `scenes.yaml` — Scene definitions
+- `customize.yaml` — Entity customizations
+- `secrets.yaml` — DO NOT READ OR MODIFY
+- `custom_components/` — Custom integrations (HACS or manual)
+- `.storage/` — HA internal storage (use APIs, not direct edits)

@@ -1,0 +1,16 @@
+configuration:
+  anthropic_api_key:
+    name: Anthropic API Key
+    description: Your Anthropic API key for Claude Code. Get one at https://console.anthropic.com/
+  model:
+    name: Model
+    description: Which Claude model to use (sonnet is recommended for most tasks)
+  permission_mode:
+    name: Permission Mode
+    description: >-
+      Controls how Claude handles permissions. "default" prompts before
+      destructive operations, "plan" requires plan approval before execution,
+      "bypassPermissions" skips all permission prompts (use with caution).
+  auto_backup:
+    name: Auto Backup
+    description: Automatically create backups before major configuration changes

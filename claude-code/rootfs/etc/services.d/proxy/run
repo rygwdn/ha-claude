@@ -1,0 +1,30 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+
+bashio::log.info "Starting HA proxy server..."
+
+# Read ingress port
+INGRESS_PORT=$(bashio::addon.ingress_port)
+
+# Export environment variables
+export INGRESS_PORT
+export CLAUDEUI_PORT=3001
+export SUPERVISOR_TOKEN="${SUPERVISOR_TOKEN}"
+export NODE_ENV=production
+
+# Wait for claudecodeui to be ready
+bashio::log.info "Waiting for Claude Code UI to start..."
+for i in $(seq 1 30); do
+    if curl -sf http://127.0.0.1:3001/health > /dev/null 2>&1 || \
+       curl -sf http://127.0.0.1:3001/ > /dev/null 2>&1; then
+        bashio::log.info "Claude Code UI is ready"
+        break
+    fi
+    if [ "$i" -eq 30 ]; then
+        bashio::log.warning "Claude Code UI not ready after 30s, starting proxy anyway"
+    fi
+    sleep 1
+done
+
+# Start the proxy server
+exec node /opt/server/dist/index.js
