@@ -15,7 +15,7 @@ COPY server/src ./src
 RUN npm run build && npm prune --production
 
 # Stage 3: Final image
-ARG BUILD_FROM
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.21
 FROM $BUILD_FROM
 
 # Install system dependencies (including Chromium for ha-browse)
