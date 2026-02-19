@@ -1,5 +1,6 @@
 import express from "express";
 import http from "http";
+import net from "net";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { setupHAProxy } from "./ha-proxy.js";
 import { ingressMiddleware } from "./routes/ingress.js";
@@ -41,7 +42,7 @@ app.use(uiProxy);
 
 // WebSocket upgrade — proxy to claudecodeui
 server.on("upgrade", (req, socket, head) => {
-  uiProxy.upgrade!(req, socket, head);
+  uiProxy.upgrade!(req, socket as unknown as net.Socket, head);
 });
 
 // Start server

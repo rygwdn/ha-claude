@@ -241,10 +241,10 @@ async function cmdDom(args: string[]): Promise<void> {
     await navigateToHA(page, path, options);
 
     // Get accessibility tree — gives a structured view of the page
-    const snapshot = await page.accessibility.snapshot();
-    if (snapshot) {
-      console.log(JSON.stringify(snapshot, null, 2));
-    } else {
+    try {
+      const snapshot = await page.locator("body").ariaSnapshot();
+      console.log(snapshot);
+    } catch {
       console.error("No accessibility tree available");
       // Fallback: get a simplified DOM representation
       const simplified = await page.evaluate(() => {
