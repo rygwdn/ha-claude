@@ -1,3 +1,7 @@
+# BUILD_FROM must be declared before the first FROM so Docker resolves it
+# when used in the stage-3 FROM instruction (Docker requirement).
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.21
+
 # Stage 1: Build CLI tools
 FROM node:22-alpine AS cli-builder
 WORKDIR /build/cli-tools
@@ -15,7 +19,6 @@ COPY server/src ./src
 RUN npm run build && npm prune --production
 
 # Stage 3: Final image
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.21
 FROM $BUILD_FROM
 
 # Install system dependencies (including Chromium for ha-browse)
