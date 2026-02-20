@@ -2,24 +2,24 @@
 # when used in the stage-3 FROM instruction (Docker requirement).
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.21
 
-# NOTE: This Dockerfile must be built with the REPO ROOT as the build context:
-#   docker build -f claude-code/Dockerfile -t ha-claude .
-# The skills/ directory lives at the repo root (shared with the Claude Code plugin).
+# Build context: claude-code/ (the addon directory, used by the HA addon builder).
+# Skills live at the repo root (skills/) for the Claude Code plugin; a copy
+# is kept in rootfs/usr/share/claude-code/skills/ for the Docker build.
 
 # Stage 1: Build CLI tools
 FROM node:22-alpine AS cli-builder
 WORKDIR /build/cli-tools
-COPY claude-code/cli-tools/package.json claude-code/cli-tools/package-lock.json claude-code/cli-tools/tsconfig.json ./
+COPY cli-tools/package.json cli-tools/package-lock.json cli-tools/tsconfig.json ./
 RUN npm ci
-COPY claude-code/cli-tools/src ./src
+COPY cli-tools/src ./src
 RUN npm run build
 
 # Stage 2: Build proxy server
 FROM node:22-alpine AS server-builder
 WORKDIR /build/server
-COPY claude-code/server/package.json claude-code/server/package-lock.json claude-code/server/tsconfig.json ./
+COPY server/package.json server/package-lock.json server/tsconfig.json ./
 RUN npm ci
-COPY claude-code/server/src ./src
+COPY server/src ./src
 RUN npm run build && npm prune --production
 
 # Stage 3: Final image
@@ -72,11 +72,8 @@ COPY --from=server-builder /build/server/dist /opt/server/dist
 COPY --from=server-builder /build/server/node_modules /opt/server/node_modules
 COPY --from=server-builder /build/server/package.json /opt/server/package.json
 
-# Copy rootfs overlay (S6 scripts, CLI wrappers, templates)
-COPY claude-code/rootfs /
-
-# Copy skills from repo root (canonical location, shared with Claude Code plugin)
-COPY skills /usr/share/claude-code/skills
+# Copy rootfs overlay (S6 scripts, CLI wrappers, skills, templates)
+COPY rootfs /
 
 # Set permissions
 RUN chmod a+x /usr/local/bin/ha-api \

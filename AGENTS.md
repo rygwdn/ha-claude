@@ -70,13 +70,20 @@ ha-claude/
 
 Current version: see `claude-code/config.yaml`.
 
-## Skills — canonical location
+## Skills — two locations, one source of truth
 
-Skills live in `skills/` at the **repo root**. This is the single source of truth. Do not duplicate them elsewhere.
+Skills exist in **two places** due to a constraint in the HA addon builder:
 
-- The **add-on Dockerfile** copies them: `COPY skills /usr/share/claude-code/skills`
-- The **terminal install script** copies them from `../skills/`
-- The **plugin** uses them directly from the root `skills/` directory
+| Location | Purpose |
+|----------|---------|
+| `skills/` (repo root) | Claude Code plugin canonical copy |
+| `claude-code/rootfs/usr/share/claude-code/skills/` | Docker image copy (used by the addon) |
+
+The HA addon builder runs Docker with `claude-code/` as the build context — it cannot reference files outside that directory. So the rootfs copy is the one that ends up in the Docker image via `COPY rootfs /`. The root `skills/` is what the Claude Code plugin reads directly.
+
+**Keep both in sync.** When editing a skill, update the file in `skills/<name>/SKILL.md` and copy it to `claude-code/rootfs/usr/share/claude-code/skills/<name>/SKILL.md`.
+
+The terminal install script reads from `../skills/` (repo root) when run locally.
 
 Each `SKILL.md` begins with YAML front-matter:
 ```yaml
@@ -110,13 +117,13 @@ The `mcp-server/src/ha-client.ts` auto-detects which mode to use (checks `SUPERV
 
 ## Docker build
 
-The Dockerfile is in `claude-code/` but **must be built with the repo root as the build context** so it can access the shared `skills/` directory:
+The Dockerfile is in `claude-code/` and uses `claude-code/` as the build context (the HA addon builder default):
 
 ```bash
-docker build -f claude-code/Dockerfile -t ha-claude .
+cd claude-code && docker build -t ha-claude .
 ```
 
-The HA addon builder should be configured to use the repo root as context (see CI configuration).
+The skills in `rootfs/` are included automatically via `COPY rootfs /`.
 
 ## How to build/test
 
@@ -152,8 +159,9 @@ docker build -f claude-code/Dockerfile .
 5. Document in both `claude-code/rootfs/usr/share/claude-code/CLAUDE.md.tmpl` and `terminal-setup/CLAUDE.md.tmpl`
 
 ### Add or update a skill
-1. Edit or create `skills/<name>/SKILL.md` (canonical location)
-2. Keep the `version:` front-matter in sync with `claude-code/config.yaml`
+1. Edit or create `skills/<name>/SKILL.md` (plugin canonical copy)
+2. Copy to `claude-code/rootfs/usr/share/claude-code/skills/<name>/SKILL.md` (Docker image copy)
+3. Keep the `version:` front-matter in sync with `claude-code/config.yaml`
 
 ### Bump the version
 1. Edit `version` in `claude-code/config.yaml`
