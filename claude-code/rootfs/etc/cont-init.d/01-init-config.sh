@@ -21,14 +21,6 @@ else
     bashio::log.info "CLAUDE.md already exists, skipping"
 fi
 
-# Copy AGENTS.md to homeassistant config dir (if not already present)
-if [ ! -f /homeassistant/AGENTS.md ]; then
-    cp /usr/share/claude-code/AGENTS.md.tmpl /homeassistant/AGENTS.md
-    bashio::log.info "Created /homeassistant/AGENTS.md"
-else
-    bashio::log.info "AGENTS.md already exists, skipping"
-fi
-
 # Copy skills to homeassistant config dir (if not already present)
 if [ ! -d /homeassistant/.claude/skills ]; then
     mkdir -p /homeassistant/.claude/skills

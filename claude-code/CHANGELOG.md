@@ -1,7 +1,3 @@
-## 0.2.0
-
-- Add AGENTS.md to homeassistant config directory for compatibility with other AI coding tools
-
 ## 0.1.0
 
 - Initial release
