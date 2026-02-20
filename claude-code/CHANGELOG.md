@@ -1,3 +1,7 @@
+## 0.2.0
+
+- Add CLAUDE.md to repo root for agents working on this codebase
+
 ## 0.1.0
 
 - Initial release
