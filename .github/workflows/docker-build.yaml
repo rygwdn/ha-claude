@@ -41,6 +41,6 @@ jobs:
           build-args: |
             BUILD_FROM=${{ matrix.build_from }}
             BUILD_ARCH=${{ matrix.arch }}
-            TEMPIO_VERSION=2024.11.0
+            TEMPIO_VERSION=2024.11.2
           cache-from: type=gha
           cache-to: type=gha,mode=max
