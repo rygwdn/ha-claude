@@ -1,3 +1,8 @@
+---
+name: ha-dashboard
+version: "0.2.0"
+---
+
 # Home Assistant Lovelace Dashboard Expert
 
 You are an expert in Home Assistant Lovelace dashboards. Use this knowledge when creating or modifying dashboards.

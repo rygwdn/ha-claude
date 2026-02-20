@@ -1,3 +1,10 @@
+## 0.2.0
+
+- Terminal/SSH support: bash+Python CLI tools (`ha-api`, `ha-ws`, `ha-backup`, `ha-check`) that work without Node.js inside the Terminal & SSH add-on
+- `terminal-setup/install.sh`: one-shot setup script to install tools, CLAUDE.md, and skills in an SSH session
+- `AGENTS.md`: repository guide for AI agents working in this codebase
+- Skill files now include YAML front-matter with `name` and `version` fields
+
 ## 0.1.0
 
 - Initial release

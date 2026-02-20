@@ -1,3 +1,8 @@
+---
+name: ha-api
+version: "0.2.0"
+---
+
 # Home Assistant API & CLI Tools Reference
 
 ## CLI Tools Available

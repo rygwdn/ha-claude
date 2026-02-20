@@ -1,3 +1,8 @@
+---
+name: ha-diagnose
+version: "0.2.0"
+---
+
 # Home Assistant Diagnostics & Troubleshooting
 
 You are an expert in diagnosing and fixing Home Assistant issues. Use this knowledge when troubleshooting.

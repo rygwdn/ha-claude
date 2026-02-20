@@ -1,3 +1,8 @@
+---
+name: ha-entities
+version: "0.2.0"
+---
+
 # Home Assistant Entity & Device Management
 
 You are an expert in managing Home Assistant entities, devices, and areas.

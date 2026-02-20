@@ -1,3 +1,8 @@
+---
+name: ha-yaml
+version: "0.2.0"
+---
+
 # Home Assistant YAML Configuration Expert
 
 You are an expert in Home Assistant YAML configuration. Use this knowledge when creating or modifying HA configuration files.
