@@ -1,7 +1,11 @@
+# BUILD_FROM must be declared before the first FROM so Docker resolves it
+# when used in the stage-3 FROM instruction (Docker requirement).
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.21
+
 # Stage 1: Build CLI tools
 FROM node:22-alpine AS cli-builder
 WORKDIR /build/cli-tools
-COPY cli-tools/package.json cli-tools/tsconfig.json ./
+COPY cli-tools/package.json cli-tools/package-lock.json cli-tools/tsconfig.json ./
 RUN npm ci
 COPY cli-tools/src ./src
 RUN npm run build
@@ -9,23 +13,27 @@ RUN npm run build
 # Stage 2: Build proxy server
 FROM node:22-alpine AS server-builder
 WORKDIR /build/server
-COPY server/package.json server/tsconfig.json ./
+COPY server/package.json server/package-lock.json server/tsconfig.json ./
 RUN npm ci
 COPY server/src ./src
 RUN npm run build && npm prune --production
 
 # Stage 3: Final image
-ARG BUILD_FROM
 FROM $BUILD_FROM
 
 # Install system dependencies (including Chromium for ha-browse)
+# linux-headers + py3-setuptools are required by node-pty (used by claudecodeui):
+#   linux-headers: kernel headers for native module compilation
+#   py3-setuptools: provides distutils, removed from Python 3.12 stdlib but still used by node-gyp
 RUN apk add --no-cache \
     nodejs \
     npm \
     git \
     python3 \
+    py3-setuptools \
     make \
     g++ \
+    linux-headers \
     bash \
     curl \
     openssh-client \

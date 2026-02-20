@@ -7,4 +7,4 @@ labels:
   org.opencontainers.image.source: "https://github.com/rygwdn/ha-claude"
   org.opencontainers.image.licenses: "Apache License 2.0"
 args:
-  TEMPIO_VERSION: "2024.11.0"
+  TEMPIO_VERSION: "2024.11.2"
