@@ -41,6 +41,45 @@ _AI coding assistant with deep Home Assistant integration._
 | `permission_mode` | `default` | Permission handling: default, plan, or bypassPermissions |
 | `auto_backup` | `true` | Auto-backup before major changes |
 
+## Terminal / SSH Usage
+
+You can also run Claude Code directly inside the **Terminal & SSH add-on** on your HA box and get the same HA-aware CLI tools, CLAUDE.md context, and skills — without the web UI.
+
+### Quick start
+
+SSH into the Terminal add-on, then run:
+
+```bash
+# If you have the repo cloned locally on the HA box:
+bash /path/to/ha-claude/terminal-setup/install.sh
+
+# Or directly from GitHub:
+bash <(curl -fsSL https://raw.githubusercontent.com/rygwdn/ha-claude/main/terminal-setup/install.sh)
+```
+
+The script will:
+1. Install `ha-api`, `ha-ws`, `ha-backup`, and `ha-check` to `~/bin`
+2. Add `~/bin` to your `PATH` in `~/.bashrc`
+3. Copy `CLAUDE.md` to `/homeassistant/` (skips if already present)
+4. Install Claude Code skills to `/homeassistant/.claude/skills/`
+
+### Then start Claude Code
+
+```bash
+source ~/.bashrc
+export ANTHROPIC_API_KEY=sk-ant-...
+cd /homeassistant
+claude
+```
+
+Claude Code will pick up `CLAUDE.md` automatically and you can use `/ha-api`, `/ha-yaml`, etc.
+
+> **Note:** `ha-browse` (browser/screenshot tool) is not available in terminal sessions. All other tools work identically to the web UI add-on.
+
+### How it works
+
+The Terminal add-on is itself a Home Assistant add-on, so `SUPERVISOR_TOKEN` is already set in the shell environment. The CLI tools (`ha-api`, `ha-ws`, etc.) are bash/Python scripts that talk to the same `http://supervisor/` internal API — no Node.js required.
+
 ## Architecture
 
 The add-on runs inside a Docker container with two services:
