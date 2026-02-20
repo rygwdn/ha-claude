@@ -88,11 +88,13 @@ You can also run Claude Code directly inside the **Terminal & SSH add-on** on yo
 SSH into the Terminal add-on, then run:
 
 ```bash
-# If you have the repo cloned locally on the HA box:
-bash /path/to/ha-claude/terminal-setup/install.sh
+curl -fsSL https://raw.githubusercontent.com/rygwdn/ha-claude/main/install.sh | bash
+```
 
-# Or directly from GitHub:
-bash <(curl -fsSL https://raw.githubusercontent.com/rygwdn/ha-claude/main/terminal-setup/install.sh)
+Or, if you have the repo cloned locally on the HA box:
+
+```bash
+bash /path/to/ha-claude/terminal-setup/install.sh
 ```
 
 The script will:
