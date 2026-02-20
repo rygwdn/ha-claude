@@ -22,12 +22,15 @@ RUN npm run build && npm prune --production
 FROM $BUILD_FROM
 
 # Install system dependencies (including Chromium for ha-browse)
-# linux-headers is required by node-pty (used by claudecodeui) to compile native modules
+# linux-headers + py3-setuptools are required by node-pty (used by claudecodeui):
+#   linux-headers: kernel headers for native module compilation
+#   py3-setuptools: provides distutils, removed from Python 3.12 stdlib but still used by node-gyp
 RUN apk add --no-cache \
     nodejs \
     npm \
     git \
     python3 \
+    py3-setuptools \
     make \
     g++ \
     linux-headers \
