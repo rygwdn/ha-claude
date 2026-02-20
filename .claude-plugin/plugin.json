@@ -1,0 +1,11 @@
+{
+  "name": "ha-claude",
+  "description": "Home Assistant integration for Claude Code — HA API tools, YAML expertise, dashboard authoring, entity management, and diagnostics",
+  "version": "0.2.0",
+  "author": {
+    "name": "rygwdn"
+  },
+  "homepage": "https://github.com/rygwdn/ha-claude",
+  "repository": "https://github.com/rygwdn/ha-claude",
+  "license": "Apache-2.0"
+}

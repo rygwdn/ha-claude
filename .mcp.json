@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ha-claude": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@rygwdn/ha-claude-mcp"],
+      "env": {
+        "HA_URL": "${HA_URL}",
+        "HA_TOKEN": "${HA_TOKEN}"
+      }
+    }
+  }
+}

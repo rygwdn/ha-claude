@@ -1,0 +1,384 @@
+#!/usr/bin/env python3
+"""ha-ws — Home Assistant WebSocket API CLI (terminal/SSH edition)
+Uses only Python stdlib, no extra packages required.
+"""
+
+import json
+import os
+import socket
+import sys
+import base64
+import struct
+
+SUPERVISOR_TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
+HA_WS_HOST = "supervisor"
+HA_WS_PORT = 80
+HA_WS_PATH = "/core/websocket"
+
+HELP = """\
+ha-ws — Home Assistant WebSocket API CLI
+
+Usage:
+  ha-ws dashboards list                     List all Lovelace dashboards
+  ha-ws dashboards get [url_path]           Get dashboard config (default: overview)
+  ha-ws dashboards save <url_path> <file>   Save dashboard config from JSON file
+
+  ha-ws entities list [--domain <domain>]   List entity registry entries
+  ha-ws devices list [--area <area>]        List device registry entries
+  ha-ws areas list                          List all areas
+
+  ha-ws automations list                    List all automations
+  ha-ws automations get <id>                Get automation config
+  ha-ws automations toggle <id> on|off      Enable/disable automation
+
+  ha-ws scenes list                         List all scenes
+  ha-ws scripts list                        List all scripts
+
+  ha-ws --help                              Show this help
+
+Environment:
+  SUPERVISOR_TOKEN  Set automatically inside HA add-on / Terminal add-on
+"""
+
+
+# ---------------------------------------------------------------------------
+# Minimal stdlib WebSocket client (RFC 6455, plain HTTP only)
+# ---------------------------------------------------------------------------
+
+def _ws_connect():
+    """Open a WebSocket connection to the HA supervisor and authenticate."""
+    if not SUPERVISOR_TOKEN:
+        sys.exit("Error: SUPERVISOR_TOKEN not set. Run inside the HA Terminal add-on.")
+
+    sock = socket.create_connection((HA_WS_HOST, HA_WS_PORT), timeout=30)
+
+    # HTTP Upgrade handshake
+    key = base64.b64encode(os.urandom(16)).decode()
+    handshake = (
+        f"GET {HA_WS_PATH} HTTP/1.1\r\n"
+        f"Host: {HA_WS_HOST}\r\n"
+        f"Upgrade: websocket\r\n"
+        f"Connection: Upgrade\r\n"
+        f"Sec-WebSocket-Key: {key}\r\n"
+        f"Sec-WebSocket-Version: 13\r\n"
+        f"\r\n"
+    )
+    sock.sendall(handshake.encode())
+
+    # Read until end of HTTP response headers
+    buf = b""
+    while b"\r\n\r\n" not in buf:
+        chunk = sock.recv(4096)
+        if not chunk:
+            raise ConnectionError("Connection closed during WebSocket handshake")
+        buf += chunk
+
+    status_line = buf.split(b"\r\n")[0].decode()
+    if "101" not in status_line:
+        raise ConnectionError(f"WebSocket upgrade failed: {status_line}")
+
+    return sock
+
+
+def _ws_send(sock, obj):
+    """Send a JSON object as a masked WebSocket text frame."""
+    payload = json.dumps(obj).encode()
+    length = len(payload)
+    mask = os.urandom(4)
+    masked = bytes(payload[i] ^ mask[i % 4] for i in range(length))
+
+    header = b"\x81"  # FIN + opcode=text
+    if length < 126:
+        header += bytes([0x80 | length])
+    elif length < 65536:
+        header += struct.pack("!BH", 0x80 | 126, length)
+    else:
+        header += struct.pack("!BQ", 0x80 | 127, length)
+
+    sock.sendall(header + mask + masked)
+
+
+def _ws_recv(sock):
+    """Receive one WebSocket frame and return the parsed JSON object."""
+    def recv_exact(n):
+        data = b""
+        while len(data) < n:
+            chunk = sock.recv(n - len(data))
+            if not chunk:
+                raise ConnectionError("WebSocket connection closed unexpectedly")
+            data += chunk
+        return data
+
+    header = recv_exact(2)
+    opcode = header[0] & 0x0F
+    is_masked = bool(header[1] & 0x80)
+    length = header[1] & 0x7F
+
+    if length == 126:
+        length = struct.unpack("!H", recv_exact(2))[0]
+    elif length == 127:
+        length = struct.unpack("!Q", recv_exact(8))[0]
+
+    mask_key = recv_exact(4) if is_masked else b""
+    data = recv_exact(length)
+
+    if is_masked:
+        data = bytes(data[i] ^ mask_key[i % 4] for i in range(length))
+
+    if opcode == 8:  # Close frame
+        raise ConnectionError("Server closed the WebSocket connection")
+
+    return json.loads(data.decode())
+
+
+def ws_command(message):
+    """Authenticate and send a single WebSocket command; return the result."""
+    sock = _ws_connect()
+    try:
+        # auth_required
+        msg = _ws_recv(sock)
+        assert msg.get("type") == "auth_required", f"Expected auth_required, got: {msg}"
+
+        _ws_send(sock, {"type": "auth", "access_token": SUPERVISOR_TOKEN})
+        msg = _ws_recv(sock)
+        if msg.get("type") == "auth_invalid":
+            sys.exit(f"Auth failed: {msg.get('message')}")
+        assert msg.get("type") == "auth_ok", f"Expected auth_ok, got: {msg}"
+
+        _ws_send(sock, {**message, "id": 1})
+        msg = _ws_recv(sock)
+
+        if not msg.get("success"):
+            err = msg.get("error", {})
+            sys.exit(f"WS command failed: {err.get('message', json.dumps(err))}")
+
+        return msg["result"]
+    finally:
+        sock.close()
+
+
+# ---------------------------------------------------------------------------
+# REST helper (for commands that can use the REST API)
+# ---------------------------------------------------------------------------
+
+import urllib.request
+
+
+def rest_get(path):
+    req = urllib.request.Request(
+        f"http://supervisor/core/api{path}",
+        headers={"Authorization": f"Bearer {SUPERVISOR_TOKEN}"},
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read())
+
+
+def rest_post(path, body=None):
+    data = json.dumps(body or {}).encode()
+    req = urllib.request.Request(
+        f"http://supervisor/core/api{path}",
+        data=data,
+        headers={
+            "Authorization": f"Bearer {SUPERVISOR_TOKEN}",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read())
+
+
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
+
+def cmd_dashboards(args):
+    action = args[0] if args else None
+    if action == "list":
+        dashboards = ws_command({"type": "lovelace/dashboards/list"})
+        print("Lovelace dashboards:")
+        print("  default (overview) — mode: storage")
+        for d in dashboards:
+            path = d.get("url_path") or "default"
+            print(f"  {path} — {d.get('title', '')} (mode: {d.get('mode', '')})")
+    elif action == "get":
+        url_path = args[1] if len(args) > 1 else None
+        config = ws_command({"type": "lovelace/config", "url_path": url_path})
+        print(json.dumps(config, indent=2))
+    elif action == "save":
+        if len(args) < 3:
+            sys.exit("Usage: ha-ws dashboards save <url_path> <json_file>")
+        url_path, file_path = args[1], args[2]
+        with open(file_path) as f:
+            config_data = json.load(f)
+        ws_command({"type": "lovelace/config/save", "url_path": url_path, "config": config_data})
+        print(f"Dashboard '{url_path}' saved successfully")
+    else:
+        sys.exit("Usage: ha-ws dashboards list|get|save")
+
+
+def cmd_entities(args):
+    if not args or args[0] != "list":
+        sys.exit("Usage: ha-ws entities list [--domain <domain>]")
+    domain_filter = None
+    if "--domain" in args:
+        idx = args.index("--domain")
+        domain_filter = args[idx + 1]
+
+    entities = ws_command({"type": "config/entity_registry/list"})
+    if domain_filter:
+        entities = [e for e in entities if e["entity_id"].startswith(f"{domain_filter}.")]
+
+    active = [e for e in entities if not e.get("disabled_by")]
+    disabled = [e for e in entities if e.get("disabled_by")]
+
+    label = f" ({domain_filter})" if domain_filter else ""
+    print(f"Entity registry{label}:")
+    for e in sorted(active, key=lambda x: x["entity_id"]):
+        name = e.get("name") or e.get("original_name") or ""
+        print(f"  {e['entity_id']}: {name} ({e.get('platform', '')})")
+    if disabled:
+        print(f"\n  + {len(disabled)} disabled entities")
+    print(f"\nTotal: {len(active)} active, {len(disabled)} disabled")
+
+
+def cmd_devices(args):
+    if not args or args[0] != "list":
+        sys.exit("Usage: ha-ws devices list [--area <area>]")
+    area_filter = None
+    if "--area" in args:
+        idx = args.index("--area")
+        area_filter = args[idx + 1]
+
+    devices = ws_command({"type": "config/device_registry/list"})
+    if area_filter:
+        areas = ws_command({"type": "config/area_registry/list"})
+        area = next(
+            (a for a in areas if a["area_id"] == area_filter or a["name"].lower() == area_filter.lower()),
+            None,
+        )
+        if not area:
+            sys.exit(f'Area "{area_filter}" not found')
+        devices = [d for d in devices if d.get("area_id") == area["area_id"]]
+
+    label = f" in {area_filter}" if area_filter else ""
+    print(f"Devices{label}:")
+    for d in sorted(devices, key=lambda x: x.get("name") or ""):
+        info = " — ".join(filter(None, [d.get("manufacturer"), d.get("model")]))
+        print(f"  {d.get('name', d['id'])}" + (f" — {info}" if info else ""))
+    print(f"\nTotal: {len(devices)} devices")
+
+
+def cmd_areas(args):
+    if not args or args[0] != "list":
+        sys.exit("Usage: ha-ws areas list")
+    areas = ws_command({"type": "config/area_registry/list"})
+    print("Areas:")
+    for a in sorted(areas, key=lambda x: x["name"]):
+        print(f"  {a['name']} ({a['area_id']})")
+    print(f"\nTotal: {len(areas)} areas")
+
+
+def cmd_automations(args):
+    action = args[0] if args else None
+    if action == "list":
+        states = rest_get("/states")
+        automations = [s for s in states if s["entity_id"].startswith("automation.")]
+        print("Automations:")
+        for a in sorted(automations, key=lambda x: x["entity_id"]):
+            name = a["attributes"].get("friendly_name", a["entity_id"])
+            status = "enabled" if a["state"] == "on" else "disabled"
+            last = a["attributes"].get("last_triggered")
+            suffix = f" (last: {last})" if last else ""
+            print(f"  [{status}] {name}{suffix}")
+            print(f"           {a['entity_id']}")
+        print(f"\nTotal: {len(automations)} automations")
+    elif action == "get":
+        if len(args) < 2:
+            sys.exit("Usage: ha-ws automations get <automation_id>")
+        eid = args[1]
+        slug = eid.replace("automation.", "")
+        try:
+            config = ws_command({"type": "config/automation/config", "entity_id": f"automation.{slug}"})
+        except SystemExit:
+            config = rest_get(f"/config/automation/config/{slug}")
+        print(json.dumps(config, indent=2))
+    elif action == "toggle":
+        if len(args) < 3:
+            sys.exit("Usage: ha-ws automations toggle <entity_id> on|off")
+        eid = args[1] if args[1].startswith("automation.") else f"automation.{args[1]}"
+        enabled = args[2] == "on"
+        svc = "turn_on" if enabled else "turn_off"
+        rest_post(f"/services/automation/{svc}", {"entity_id": eid})
+        print(f"Automation {eid} {'enabled' if enabled else 'disabled'}")
+    else:
+        sys.exit("Usage: ha-ws automations list|get|toggle")
+
+
+def cmd_scenes(args):
+    if not args or args[0] != "list":
+        sys.exit("Usage: ha-ws scenes list")
+    states = rest_get("/states")
+    scenes = [s for s in states if s["entity_id"].startswith("scene.")]
+    print("Scenes:")
+    for s in sorted(scenes, key=lambda x: x["entity_id"]):
+        name = s["attributes"].get("friendly_name", s["entity_id"])
+        print(f"  {name} ({s['entity_id']})")
+    print(f"\nTotal: {len(scenes)} scenes")
+
+
+def cmd_scripts(args):
+    if not args or args[0] != "list":
+        sys.exit("Usage: ha-ws scripts list")
+    states = rest_get("/states")
+    scripts = [s for s in states if s["entity_id"].startswith("script.")]
+    print("Scripts:")
+    for s in sorted(scripts, key=lambda x: x["entity_id"]):
+        name = s["attributes"].get("friendly_name", s["entity_id"])
+        last = s["attributes"].get("last_triggered", "")
+        suffix = f" (last: {last})" if last else ""
+        print(f"  {name}{suffix}")
+        print(f"    {s['entity_id']}")
+    print(f"\nTotal: {len(scripts)} scripts")
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+def main():
+    args = sys.argv[1:]
+    if not args or args[0] in ("--help", "-h"):
+        print(HELP)
+        sys.exit(0)
+
+    if not SUPERVISOR_TOKEN:
+        sys.exit("Error: SUPERVISOR_TOKEN not set. Run inside the HA Terminal add-on.")
+
+    category = args[0]
+    rest_args = args[1:]
+
+    dispatch = {
+        "dashboards": cmd_dashboards,
+        "entities": cmd_entities,
+        "devices": cmd_devices,
+        "areas": cmd_areas,
+        "automations": cmd_automations,
+        "scenes": cmd_scenes,
+        "scripts": cmd_scripts,
+    }
+
+    if category not in dispatch:
+        print(f"Unknown category: {category}", file=sys.stderr)
+        print("Run 'ha-ws --help' for usage", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        dispatch[category](rest_args)
+    except (ConnectionError, OSError) as e:
+        sys.exit(f"Connection error: {e}")
+    except KeyboardInterrupt:
+        sys.exit(130)
+
+
+if __name__ == "__main__":
+    main()

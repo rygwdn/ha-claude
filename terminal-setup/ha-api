@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+# ha-api — Home Assistant REST API CLI (terminal/SSH edition)
+# Uses curl + SUPERVISOR_TOKEN, no Node.js required.
+
+set -euo pipefail
+
+HELP="ha-api — Home Assistant REST API CLI
+
+Usage:
+  ha-api states                           List all entity states (summary)
+  ha-api states <entity_id>               Get single entity state + attributes
+  ha-api services                         List all service domains
+  ha-api services <domain>                List services for a domain
+  ha-api call <domain>.<service> [json]   Call a service
+  ha-api config                           Get HA core configuration
+  ha-api logs [--lines N]                 Get HA core logs (default: 50 lines)
+  ha-api history <entity_id> [--hours N]  Get entity state history (default: 24h)
+  ha-api events                           List available event types
+  ha-api --help                           Show this help
+
+Environment:
+  SUPERVISOR_TOKEN  Set automatically inside HA add-on / Terminal add-on
+
+Examples:
+  ha-api states light.living_room
+  ha-api call light.turn_on '{\"entity_id\": \"light.living_room\", \"brightness\": 128}'
+  ha-api services light
+  ha-api history sensor.temperature --hours 48
+"
+
+: "${SUPERVISOR_TOKEN:?Error: SUPERVISOR_TOKEN not set. Run inside the HA Terminal add-on.}"
+
+HA_URL="http://supervisor/core/api"
+
+ha_get() {
+  curl -sf -H "Authorization: Bearer $SUPERVISOR_TOKEN" -H "Content-Type: application/json" \
+    "${HA_URL}${1}"
+}
+
+ha_post() {
+  local path="$1"
+  local body="${2:-{}}"
+  curl -sf -X POST -H "Authorization: Bearer $SUPERVISOR_TOKEN" -H "Content-Type: application/json" \
+    -d "$body" "${HA_URL}${path}"
+}
+
+if [[ $# -eq 0 || "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  echo "$HELP"
+  exit 0
+fi
+
+CMD="$1"
+shift
+
+case "$CMD" in
+  states)
+    if [[ $# -gt 0 ]]; then
+      ha_get "/states/$1" | python3 -m json.tool
+    else
+      ha_get "/states" | python3 -c "
+import json, sys
+states = json.load(sys.stdin)
+by_domain = {}
+for s in states:
+    domain = s['entity_id'].split('.')[0]
+    by_domain.setdefault(domain, []).append(s)
+for domain in sorted(by_domain):
+    entities = by_domain[domain]
+    print(f'\n{domain} ({len(entities)}):')
+    for e in sorted(entities, key=lambda x: x['entity_id']):
+        name = e.get('attributes', {}).get('friendly_name', '')
+        suffix = f' ({name})' if name else ''
+        print(f'  {e[\"entity_id\"]}: {e[\"state\"]}{suffix}')
+print(f'\nTotal: {len(states)} entities')
+"
+    fi
+    ;;
+
+  services)
+    if [[ $# -gt 0 ]]; then
+      domain="$1"
+      ha_get "/services" | python3 -c "
+import json, sys
+services = json.load(sys.stdin)
+domain = '$domain'
+match = next((s for s in services if s['domain'] == domain), None)
+if not match:
+    print(f'Domain \"{domain}\" not found', file=sys.stderr)
+    sys.exit(1)
+print(f'{domain} services:')
+for name in sorted(match['services']):
+    print(f'  {domain}.{name}')
+"
+    else
+      ha_get "/services" | python3 -c "
+import json, sys
+services = json.load(sys.stdin)
+for s in sorted(services, key=lambda x: x['domain']):
+    count = len(s['services'])
+    print(f'  {s[\"domain\"]} ({count} services)')
+print(f'\nTotal: {len(services)} domains')
+print(\"Use 'ha-api services <domain>' for details\")
+"
+    fi
+    ;;
+
+  call)
+    if [[ $# -lt 1 ]]; then
+      echo "Usage: ha-api call <domain>.<service> [json_data]" >&2
+      exit 1
+    fi
+    svc="$1"
+    body="${2:-{}}"
+    domain="${svc%%.*}"
+    service="${svc#*.}"
+    if [[ -z "$domain" || -z "$service" || "$domain" == "$service" ]]; then
+      echo "Service must be in format: domain.service (e.g., light.turn_on)" >&2
+      exit 1
+    fi
+    ha_post "/services/${domain}/${service}" "$body" | python3 -m json.tool
+    ;;
+
+  config)
+    ha_get "/config" | python3 -m json.tool
+    ;;
+
+  logs)
+    lines=50
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --lines) lines="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    curl -sf -H "Authorization: Bearer $SUPERVISOR_TOKEN" \
+      "${HA_URL}/error_log" | tail -n "$lines"
+    ;;
+
+  history)
+    if [[ $# -lt 1 ]]; then
+      echo "Usage: ha-api history <entity_id> [--hours N]" >&2
+      exit 1
+    fi
+    entity_id="$1"; shift
+    hours=24
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --hours) hours="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    python3 -c "
+import subprocess, json, sys
+from datetime import datetime, timedelta, timezone
+hours = $hours
+entity = '$entity_id'
+end = datetime.now(timezone.utc)
+start = end - timedelta(hours=hours)
+url = f'http://supervisor/core/api/history/period/{start.isoformat()}?filter_entity_id={entity}&end_time={end.isoformat()}'
+result = subprocess.run(
+    ['curl', '-sf', '-H', f'Authorization: Bearer \$SUPERVISOR_TOKEN', url],
+    capture_output=True, text=True
+)
+data = json.loads(result.stdout)
+entries = data[0] if data else []
+if not entries:
+    print(f'No history found for {entity} in last {hours}h')
+else:
+    print(f'History for {entity} (last {hours}h):')
+    for e in entries:
+        t = datetime.fromisoformat(e['last_changed'].replace('Z', '+00:00')).astimezone()
+        print(f'  {t.strftime(\"%Y-%m-%d %H:%M:%S\")}: {e[\"state\"]}')
+    print(f'\n{len(entries)} state changes')
+" 2>/dev/null || {
+      end_time=$(date -u +%Y-%m-%dT%H:%M:%S+00:00)
+      start_time=$(date -u -d "${hours} hours ago" +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || \
+                   date -u -v-${hours}H +%Y-%m-%dT%H:%M:%S+00:00)
+      curl -sf -H "Authorization: Bearer $SUPERVISOR_TOKEN" \
+        "${HA_URL}/history/period/${start_time}?filter_entity_id=${entity_id}&end_time=${end_time}" \
+        | python3 -m json.tool
+    }
+    ;;
+
+  events)
+    ha_get "/events" | python3 -m json.tool
+    ;;
+
+  *)
+    echo "Unknown command: $CMD" >&2
+    echo "Run 'ha-api --help' for usage" >&2
+    exit 1
+    ;;
+esac

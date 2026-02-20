@@ -1,6 +1,6 @@
 # Claude Code for Home Assistant
 
-A Home Assistant add-on that provides a powerful web UI for interacting with Claude Code, purpose-built for managing your Home Assistant installation.
+Home Assistant integration for Claude Code — available as a **HA add-on** (web UI), a **Claude Code plugin** (works from any machine), or a **terminal tool** (SSH into your HA box).
 
 [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Frygwdn%2Fha-claude)
 
@@ -12,6 +12,44 @@ A Home Assistant add-on that provides a powerful web UI for interacting with Cla
 - **HA API Proxy** — Frontend can access HA entity states, services, config, and logs
 - **Session Management** — Multiple persistent Claude Code sessions
 - **Git Integration** — Built-in git panel for tracking configuration changes
+
+## Claude Code Plugin
+
+Use ha-claude as a Claude Code plugin from **any machine** — your laptop, a dev container, or anywhere you run Claude Code. The plugin provides HA skills and an MCP server that connects to your HA instance over the network.
+
+### Install the plugin
+
+```bash
+# In a Claude Code session:
+/plugin install https://github.com/rygwdn/ha-claude
+```
+
+### Configure the MCP server
+
+After installing the plugin, configure it to connect to your HA instance:
+
+```bash
+claude mcp add ha-claude \
+  -e HA_URL=http://homeassistant.local:8123 \
+  -e HA_TOKEN=<long-lived-access-token> \
+  -- npx @rygwdn/ha-claude-mcp
+```
+
+> Get a long-lived access token from HA: **Profile** → **Security** → **Long-lived access tokens**.
+
+The MCP server exposes all HA tools (`ha_states`, `ha_call_service`, `ha_dashboards`, `ha_automations`, `ha_check_config`, etc.) directly to Claude as first-class tools — no Bash tool required.
+
+### Skills (available everywhere)
+
+Once the plugin is installed, Claude can load HA domain knowledge on demand:
+
+```
+/ha-api       — API reference and CLI tool docs
+/ha-yaml      — YAML configuration patterns
+/ha-dashboard — Lovelace dashboard authoring
+/ha-entities  — Entity and device management
+/ha-diagnose  — Troubleshooting guide
+```
 
 ## Add-ons
 
@@ -40,6 +78,45 @@ _AI coding assistant with deep Home Assistant integration._
 | `model` | `sonnet` | Claude model: sonnet, opus, or haiku |
 | `permission_mode` | `default` | Permission handling: default, plan, or bypassPermissions |
 | `auto_backup` | `true` | Auto-backup before major changes |
+
+## Terminal / SSH Usage
+
+You can also run Claude Code directly inside the **Terminal & SSH add-on** on your HA box and get the same HA-aware CLI tools, CLAUDE.md context, and skills — without the web UI.
+
+### Quick start
+
+SSH into the Terminal add-on, then run:
+
+```bash
+# If you have the repo cloned locally on the HA box:
+bash /path/to/ha-claude/terminal-setup/install.sh
+
+# Or directly from GitHub:
+bash <(curl -fsSL https://raw.githubusercontent.com/rygwdn/ha-claude/main/terminal-setup/install.sh)
+```
+
+The script will:
+1. Install `ha-api`, `ha-ws`, `ha-backup`, and `ha-check` to `~/bin`
+2. Add `~/bin` to your `PATH` in `~/.bashrc`
+3. Copy `CLAUDE.md` to `/homeassistant/` (skips if already present)
+4. Install Claude Code skills to `/homeassistant/.claude/skills/`
+
+### Then start Claude Code
+
+```bash
+source ~/.bashrc
+export ANTHROPIC_API_KEY=sk-ant-...
+cd /homeassistant
+claude
+```
+
+Claude Code will pick up `CLAUDE.md` automatically and you can use `/ha-api`, `/ha-yaml`, etc.
+
+> **Note:** `ha-browse` (browser/screenshot tool) is not available in terminal sessions. All other tools work identically to the web UI add-on.
+
+### How it works
+
+The Terminal add-on is itself a Home Assistant add-on, so `SUPERVISOR_TOKEN` is already set in the shell environment. The CLI tools (`ha-api`, `ha-ws`, etc.) are bash/Python scripts that talk to the same `http://supervisor/` internal API — no Node.js required.
 
 ## Architecture
 

@@ -2,6 +2,10 @@
 # when used in the stage-3 FROM instruction (Docker requirement).
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.21
 
+# Build context: claude-code/ (the addon directory, used by the HA addon builder).
+# Skills live at the repo root (skills/) for the Claude Code plugin; a copy
+# is kept in rootfs/usr/share/claude-code/skills/ for the Docker build.
+
 # Stage 1: Build CLI tools
 FROM node:22-alpine AS cli-builder
 WORKDIR /build/cli-tools
