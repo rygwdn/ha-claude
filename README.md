@@ -1,6 +1,6 @@
 # Claude Code for Home Assistant
 
-A Home Assistant add-on that provides a powerful web UI for interacting with Claude Code, purpose-built for managing your Home Assistant installation.
+Home Assistant integration for Claude Code — available as a **HA add-on** (web UI), a **Claude Code plugin** (works from any machine), or a **terminal tool** (SSH into your HA box).
 
 [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Frygwdn%2Fha-claude)
 
@@ -12,6 +12,44 @@ A Home Assistant add-on that provides a powerful web UI for interacting with Cla
 - **HA API Proxy** — Frontend can access HA entity states, services, config, and logs
 - **Session Management** — Multiple persistent Claude Code sessions
 - **Git Integration** — Built-in git panel for tracking configuration changes
+
+## Claude Code Plugin
+
+Use ha-claude as a Claude Code plugin from **any machine** — your laptop, a dev container, or anywhere you run Claude Code. The plugin provides HA skills and an MCP server that connects to your HA instance over the network.
+
+### Install the plugin
+
+```bash
+# In a Claude Code session:
+/plugin install https://github.com/rygwdn/ha-claude
+```
+
+### Configure the MCP server
+
+After installing the plugin, configure it to connect to your HA instance:
+
+```bash
+claude mcp add ha-claude \
+  -e HA_URL=http://homeassistant.local:8123 \
+  -e HA_TOKEN=<long-lived-access-token> \
+  -- npx @rygwdn/ha-claude-mcp
+```
+
+> Get a long-lived access token from HA: **Profile** → **Security** → **Long-lived access tokens**.
+
+The MCP server exposes all HA tools (`ha_states`, `ha_call_service`, `ha_dashboards`, `ha_automations`, `ha_check_config`, etc.) directly to Claude as first-class tools — no Bash tool required.
+
+### Skills (available everywhere)
+
+Once the plugin is installed, Claude can load HA domain knowledge on demand:
+
+```
+/ha-api       — API reference and CLI tool docs
+/ha-yaml      — YAML configuration patterns
+/ha-dashboard — Lovelace dashboard authoring
+/ha-entities  — Entity and device management
+/ha-diagnose  — Troubleshooting guide
+```
 
 ## Add-ons
 

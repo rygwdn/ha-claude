@@ -10,10 +10,10 @@
 set -euo pipefail
 
 REPO_RAW="https://raw.githubusercontent.com/rygwdn/ha-claude/main/terminal-setup"
+REPO_RAW_ROOT="https://raw.githubusercontent.com/rygwdn/ha-claude/main"
 TOOLS=(ha-api ha-ws ha-backup ha-check)
 INSTALL_DIR="${HOME}/bin"
 HA_CONFIG_DIR="/homeassistant"
-SKILLS_SRC_URL="${REPO_RAW}/../claude-code/rootfs/usr/share/claude-code"
 
 # ── Detect mode: local or remote ─────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -106,10 +106,11 @@ fi
 SKILLS_DIR="${HA_CONFIG_DIR}/.claude/skills"
 
 if [[ "$LOCAL_MODE" == true ]]; then
-  ADDON_SKILLS="${SCRIPT_DIR}/../claude-code/rootfs/usr/share/claude-code/skills"
-  if [[ -d "$ADDON_SKILLS" ]]; then
+  # Skills are at the repo root (canonical location)
+  ROOT_SKILLS="${SCRIPT_DIR}/../skills"
+  if [[ -d "$ROOT_SKILLS" ]]; then
     mkdir -p "$SKILLS_DIR"
-    for skill_dir in "${ADDON_SKILLS}"/*/; do
+    for skill_dir in "${ROOT_SKILLS}"/*/; do
       skill_name="$(basename "$skill_dir")"
       if [[ ! -d "${SKILLS_DIR}/${skill_name}" ]]; then
         cp -r "$skill_dir" "${SKILLS_DIR}/${skill_name}"
@@ -119,10 +120,23 @@ if [[ "$LOCAL_MODE" == true ]]; then
       fi
     done
   else
-    warn "Add-on skills directory not found at ${ADDON_SKILLS}"
+    warn "Skills directory not found at ${ROOT_SKILLS}"
   fi
 else
-  warn "Remote skill install not supported — clone the repo and run install.sh locally for skills"
+  # Remote install: download each skill from GitHub
+  SKILLS=(ha-api ha-dashboard ha-diagnose ha-entities ha-yaml)
+  mkdir -p "$SKILLS_DIR"
+  for skill in "${SKILLS[@]}"; do
+    skill_dest="${SKILLS_DIR}/${skill}"
+    if [[ ! -d "$skill_dest" ]]; then
+      mkdir -p "$skill_dest"
+      curl -fsSL "${REPO_RAW_ROOT}/skills/${skill}/SKILL.md" -o "${skill_dest}/SKILL.md" 2>/dev/null || \
+        warn "Could not download skill: ${skill}"
+      info "Installed skill: ${skill}"
+    else
+      info "Skill already installed: ${skill}"
+    fi
+  done
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────
