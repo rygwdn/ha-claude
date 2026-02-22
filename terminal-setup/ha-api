@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # ha-api — Home Assistant REST API CLI (terminal/SSH edition)
+# Covers operations not available in hass-cli or the ha CLI.
 # Uses curl + SUPERVISOR_TOKEN, no Node.js required.
 
 set -euo pipefail
@@ -7,24 +8,25 @@ set -euo pipefail
 HELP="ha-api — Home Assistant REST API CLI
 
 Usage:
-  ha-api states                           List all entity states (summary)
-  ha-api states <entity_id>               Get single entity state + attributes
-  ha-api services                         List all service domains
-  ha-api services <domain>                List services for a domain
-  ha-api call <domain>.<service> [json]   Call a service
-  ha-api config                           Get HA core configuration
-  ha-api logs [--lines N]                 Get HA core logs (default: 50 lines)
+  ha-api call <domain>.<service> [json]   Call a service with optional data
   ha-api history <entity_id> [--hours N]  Get entity state history (default: 24h)
-  ha-api events                           List available event types
+  ha-api config                           Get HA core configuration
   ha-api --help                           Show this help
+
+For most other queries, prefer built-in tools:
+  hass-cli state list / get <entity>      Entity states
+  hass-cli service list / call            Services
+  hass-cli device list                    Devices
+  hass-cli area list                      Areas
+  ha core logs                            Logs
+  ha core check                           Config validation
+  ha backups list / new                   Backups
 
 Environment:
   SUPERVISOR_TOKEN  Set automatically inside HA add-on / Terminal add-on
 
 Examples:
-  ha-api states light.living_room
   ha-api call light.turn_on '{\"entity_id\": \"light.living_room\", \"brightness\": 128}'
-  ha-api services light
   ha-api history sensor.temperature --hours 48
 "
 
@@ -53,57 +55,6 @@ CMD="$1"
 shift
 
 case "$CMD" in
-  states)
-    if [[ $# -gt 0 ]]; then
-      ha_get "/states/$1" | python3 -m json.tool
-    else
-      ha_get "/states" | python3 -c "
-import json, sys
-states = json.load(sys.stdin)
-by_domain = {}
-for s in states:
-    domain = s['entity_id'].split('.')[0]
-    by_domain.setdefault(domain, []).append(s)
-for domain in sorted(by_domain):
-    entities = by_domain[domain]
-    print(f'\n{domain} ({len(entities)}):')
-    for e in sorted(entities, key=lambda x: x['entity_id']):
-        name = e.get('attributes', {}).get('friendly_name', '')
-        suffix = f' ({name})' if name else ''
-        print(f'  {e[\"entity_id\"]}: {e[\"state\"]}{suffix}')
-print(f'\nTotal: {len(states)} entities')
-"
-    fi
-    ;;
-
-  services)
-    if [[ $# -gt 0 ]]; then
-      domain="$1"
-      ha_get "/services" | python3 -c "
-import json, sys
-services = json.load(sys.stdin)
-domain = '$domain'
-match = next((s for s in services if s['domain'] == domain), None)
-if not match:
-    print(f'Domain \"{domain}\" not found', file=sys.stderr)
-    sys.exit(1)
-print(f'{domain} services:')
-for name in sorted(match['services']):
-    print(f'  {domain}.{name}')
-"
-    else
-      ha_get "/services" | python3 -c "
-import json, sys
-services = json.load(sys.stdin)
-for s in sorted(services, key=lambda x: x['domain']):
-    count = len(s['services'])
-    print(f'  {s[\"domain\"]} ({count} services)')
-print(f'\nTotal: {len(services)} domains')
-print(\"Use 'ha-api services <domain>' for details\")
-"
-    fi
-    ;;
-
   call)
     if [[ $# -lt 1 ]]; then
       echo "Usage: ha-api call <domain>.<service> [json_data]" >&2
@@ -122,18 +73,6 @@ print(\"Use 'ha-api services <domain>' for details\")
 
   config)
     ha_get "/config" | python3 -m json.tool
-    ;;
-
-  logs)
-    lines=50
-    while [[ $# -gt 0 ]]; do
-      case "$1" in
-        --lines) lines="$2"; shift 2 ;;
-        *) shift ;;
-      esac
-    done
-    curl -sf -H "Authorization: Bearer $SUPERVISOR_TOKEN" \
-      "${HA_URL}/error_log" | tail -n "$lines"
     ;;
 
   history)
@@ -179,10 +118,6 @@ else:
         "${HA_URL}/history/period/${start_time}?filter_entity_id=${entity_id}&end_time=${end_time}" \
         | python3 -m json.tool
     }
-    ;;
-
-  events)
-    ha_get "/events" | python3 -m json.tool
     ;;
 
   *)

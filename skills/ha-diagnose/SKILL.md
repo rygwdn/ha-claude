@@ -11,19 +11,19 @@ You are an expert in diagnosing and fixing Home Assistant issues. Use this knowl
 
 ### 1. Check Configuration
 ```bash
-ha-check
+ha core check
 ```
 Always start here. Catches YAML syntax errors, invalid entity references, and integration issues.
 
 ### 2. Check Logs
 ```bash
-ha-api logs --lines 100
+ha core logs
 ```
 Look for: ERROR, WARNING, integration names, entity IDs.
 
 ### 3. Check Entity States
 ```bash
-ha-api states <entity_id>
+hass-cli state get <entity_id>
 ```
 Look for: `unavailable`, `unknown`, stale timestamps.
 
@@ -37,9 +37,9 @@ Identify when an entity went unavailable or started misbehaving.
 
 ### Entity Shows "Unavailable"
 1. Check if the device is powered on and connected
-2. Check integration logs: `ha-api logs --lines 100` (filter for integration name)
+2. Check integration logs: `ha core logs` (filter for integration name)
 3. Check if the integration needs reconfiguration
-4. Try reloading the integration: `ha-api call homeassistant.reload_config_entry`
+4. Try reloading the integration: `hass-cli service call homeassistant reload_config_entry`
 
 ### Automation Not Triggering
 1. Check automation is enabled: `ha-ws automations list`
@@ -93,24 +93,24 @@ Identify when an entity went unavailable or started misbehaving.
 
 ```bash
 # 1. Create backup
-ha-backup create "pre-restart"
+ha backups new --name "pre-restart"
 
 # 2. Validate config
-ha-check
+ha core check
 
 # 3. Only if config is valid, restart
-ha-api call homeassistant.restart
+ha core restart
 
 # 4. Monitor logs for errors during startup
 sleep 30
-ha-api logs --lines 50
+ha core logs
 ```
 
 ## Performance Checks
 
 ### Check Entity Count
 ```bash
-ha-api states | tail -1    # Shows total entity count
+hass-cli state list | wc -l    # Total entity count
 ```
 More than 1000 entities may cause performance issues.
 
@@ -121,6 +121,6 @@ ha-ws automations list | tail -1    # Shows total
 
 ### Check for Unavailable Entities
 ```bash
-ha-api states | grep "unavailable"
+hass-cli state list | grep unavailable
 ```
 Many unavailable entities can slow down HA.

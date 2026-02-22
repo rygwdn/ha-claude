@@ -7,32 +7,48 @@ version: "0.2.0"
 
 ## CLI Tools Available
 
-### ha-api — REST API
+### hass-cli — Official Home Assistant CLI
+
+Configured automatically to use the supervisor API via `HASS_SERVER`/`HASS_TOKEN`.
 
 ```bash
-ha-api states                           # List all entities (grouped by domain)
-ha-api states <entity_id>               # Full state + attributes for one entity
-ha-api services                         # List all service domains
-ha-api services <domain>                # List services for a domain
-ha-api call <domain>.<service> [json]   # Call a service with optional data
-ha-api config                           # Get HA core configuration
-ha-api logs [--lines N]                 # Get HA core logs (default: 50)
-ha-api history <entity_id> [--hours N]  # Get entity state history (default: 24h)
-ha-api events                           # List available event types
+# Entity states
+hass-cli state list                          # All entity states
+hass-cli state get <entity_id>               # Single entity state + attributes
+hass-cli state list --output json            # JSON output for parsing
+
+# Services
+hass-cli service list                        # All service domains
+hass-cli service list <domain>.*             # Services for a domain
+hass-cli service call <domain> <service> --data entity_id=light.living_room
+
+# Registry
+hass-cli entity list                         # Entity registry
+hass-cli entity list <pattern>               # Filter by pattern
+hass-cli device list                         # Device registry
+hass-cli area list                           # All areas
 ```
 
-### ha-ws — WebSocket API
+### ha — HA OS Supervisor CLI (always available)
+
+```bash
+ha core check          # Validate configuration (run before restart!)
+ha core logs           # View HA core logs
+ha core restart        # Restart HA core
+ha core restart --safe-mode  # Restart in safe mode
+
+ha backups list        # List all backups
+ha backups new --name "before-changes"  # Create a backup
+ha backups restore <slug>               # Restore a backup
+```
+
+### ha-ws — WebSocket API (dashboards + automations)
 
 ```bash
 # Dashboards (Lovelace)
 ha-ws dashboards list                     # List all dashboards
 ha-ws dashboards get [url_path]           # Get dashboard config JSON
 ha-ws dashboards save <url_path> <file>   # Save dashboard from JSON file
-
-# Entity/Device/Area Registry
-ha-ws entities list [--domain <domain>]   # List entity registry
-ha-ws devices list [--area <area>]        # List device registry
-ha-ws areas list                          # List all areas
 
 # Automations
 ha-ws automations list                    # List all automations with status
@@ -44,17 +60,14 @@ ha-ws scenes list                         # List all scenes
 ha-ws scripts list                        # List all scripts
 ```
 
-### ha-backup — Backup Management
+### ha-api — Custom REST helpers
+
+Covers operations not in hass-cli or the ha CLI:
 
 ```bash
-ha-backup create [name]    # Create partial backup (config + folders)
-ha-backup list             # List existing backups
-```
-
-### ha-check — Config Validation
-
-```bash
-ha-check    # Validate HA configuration (run before restart!)
+ha-api call <domain>.<service> [json]   # Call a service with raw JSON body
+ha-api history <entity_id> [--hours N]  # Entity state history (default: 24h)
+ha-api config                           # HA core configuration
 ```
 
 ## REST API Reference
@@ -109,6 +122,10 @@ Auth message: `{"type": "auth", "access_token": "$SUPERVISOR_TOKEN"}`
 
 ### Call a service
 ```bash
+# Preferred: hass-cli (structured args)
+hass-cli service call light turn_on --data entity_id=light.living_room brightness=200
+
+# Alternative: ha-api (raw JSON)
 ha-api call light.turn_on '{"entity_id": "light.living_room", "brightness": 200}'
 ha-api call climate.set_temperature '{"entity_id": "climate.thermostat", "temperature": 21}'
 ha-api call notify.mobile_app '{"message": "Hello!", "title": "Test"}'
@@ -132,8 +149,8 @@ ha-ws dashboards save my-dashboard /tmp/dashboard.json
 ### Safe restart workflow
 ```bash
 # 1. Check config first
-ha-check
+ha core check
 
 # 2. Only if valid, restart
-ha-api call homeassistant.restart
+ha core restart
 ```

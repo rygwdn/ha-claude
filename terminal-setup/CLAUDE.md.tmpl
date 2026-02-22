@@ -3,10 +3,19 @@
 Working directory: /homeassistant (HA config directory)
 
 ## CLI Tools
-- `ha-api` — HA REST API (states, services, config, logs, history)
-- `ha-ws` — HA WebSocket (dashboards, entity/device registry, automations)
-- `ha-backup` — Create backups before changes
-- `ha-check` — Validate configuration
+
+### Built-in (always available)
+- `ha core check` — Validate configuration (run before restart!)
+- `ha core logs` — View HA core logs
+- `ha core restart` — Restart HA core
+- `ha backups list` / `ha backups new --name <name>` — Manage backups
+- `hass-cli state list/get` — Entity states
+- `hass-cli service list/call` — Services
+- `hass-cli device list` / `hass-cli area list` — Devices and areas
+
+### Custom tools (~/bin)
+- `ha-api` — Service calls with raw JSON, entity history, HA config
+- `ha-ws` — WebSocket API (dashboards, automations, registry)
 
 Run any tool with `--help` for usage details.
 
@@ -16,13 +25,13 @@ Note: `ha-browse` (browser/screenshot tool) is not available in terminal session
 Use /ha-yaml, /ha-api, /ha-dashboard, /ha-diagnose, /ha-entities for domain knowledge.
 
 ## Rules
-1. Always run `ha-check` before suggesting an HA restart
-2. Always run `ha-backup create` before major changes
+1. Always run `ha core check` before suggesting an HA restart
+2. Always run `ha backups new` before major changes
 3. NEVER read or modify secrets.yaml
 4. Prefer editing YAML files directly (Claude has Read/Edit/Write tools)
 5. Use `ha-ws dashboards save` for Lovelace changes (not direct file edits)
 6. Use `ha-ws automations` for UI-managed automations (not file edits)
-7. After modifying YAML config files, run `ha-check` to validate
+7. After modifying YAML config files, run `ha core check` to validate
 
 ## File Structure
 - `configuration.yaml` — Main configuration (includes other files)

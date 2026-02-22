@@ -11,7 +11,7 @@ set -euo pipefail
 
 REPO_RAW="https://raw.githubusercontent.com/rygwdn/ha-claude/main/terminal-setup"
 REPO_RAW_ROOT="https://raw.githubusercontent.com/rygwdn/ha-claude/main"
-TOOLS=(ha-api ha-ws ha-backup ha-check)
+TOOLS=(ha-api ha-ws)
 INSTALL_DIR="${HOME}/bin"
 HA_CONFIG_DIR="/homeassistant"
 
@@ -39,7 +39,7 @@ if ! command -v curl &>/dev/null; then
 fi
 
 if ! command -v python3 &>/dev/null; then
-  warn "python3 not found — ha-ws and some ha-api features will not work."
+  warn "python3 not found — ha-ws will not work."
 fi
 
 info "Environment OK (SUPERVISOR_TOKEN is set)"
@@ -73,6 +73,29 @@ fi
 
 # Export immediately for this session
 export PATH="${INSTALL_DIR}:${PATH}"
+
+# ── Install homeassistant-cli (hass-cli) ──────────────────────────────────────
+info "Installing homeassistant-cli..."
+if pip3 install homeassistant-cli --quiet 2>/dev/null || pip install homeassistant-cli --quiet 2>/dev/null; then
+  info "homeassistant-cli installed"
+else
+  warn "Could not install homeassistant-cli — hass-cli commands will not work"
+fi
+
+# Configure hass-cli to use the supervisor API automatically
+HASS_ENV_LINES='# hass-cli: use supervisor API
+export HASS_SERVER="http://supervisor/core"
+export HASS_TOKEN="$SUPERVISOR_TOKEN"'
+
+if ! grep -qF 'HASS_SERVER' "$BASHRC" 2>/dev/null; then
+  echo "" >> "$BASHRC"
+  echo "$HASS_ENV_LINES" >> "$BASHRC"
+  info "Added HASS_SERVER/HASS_TOKEN to ${BASHRC}"
+fi
+
+# Export immediately for this session
+export HASS_SERVER="http://supervisor/core"
+export HASS_TOKEN="$SUPERVISOR_TOKEN"
 
 # ── Set up CLAUDE.md ──────────────────────────────────────────────────────────
 CLAUDE_MD="${HA_CONFIG_DIR}/CLAUDE.md"
@@ -144,10 +167,21 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  HA Claude terminal tools installed!"
 echo ""
-echo "  Tools in ${INSTALL_DIR}:"
+echo "  Custom tools in ${INSTALL_DIR}:"
 for tool in "${TOOLS[@]}"; do
   echo "    • ${tool}"
 done
+echo ""
+echo "  Built-in HA CLI tools (always available):"
+echo "    • ha core check        — validate config"
+echo "    • ha core logs         — view logs"
+echo "    • ha core restart      — restart HA"
+echo "    • ha backups list      — list backups"
+echo "    • ha backups new       — create backup"
+echo "    • hass-cli state list  — list entity states"
+echo "    • hass-cli service call — call services"
+echo "    • hass-cli device list — list devices"
+echo "    • hass-cli area list   — list areas"
 echo ""
 echo "  Next steps:"
 echo "    1. Reload your shell:  source ~/.bashrc"
