@@ -16,11 +16,15 @@ INSTALL_DIR="${HOME}/bin"
 HA_CONFIG_DIR="/homeassistant"
 
 # ── Detect mode: local or remote ─────────────────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "${SCRIPT_DIR}/ha-api" ]]; then
+# BASH_SOURCE[0] is unbound when the script is piped via curl | bash (stdin),
+# so use a default of empty string to avoid errors with set -u.
+_src="${BASH_SOURCE[0]:-}"
+if [[ -n "$_src" ]] && [[ -f "$(dirname "$_src")/ha-api" ]]; then
   LOCAL_MODE=true
+  SCRIPT_DIR="$(cd "$(dirname "$_src")" && pwd)"
 else
   LOCAL_MODE=false
+  SCRIPT_DIR=""
 fi
 
 info()  { echo "[install] $*"; }
